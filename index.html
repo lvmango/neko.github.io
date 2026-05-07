@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Dino Skin Color Picker</title>
+<style>
+  :root {
+    --bg: #1b1d22;
+    --panel: #262932;
+    --panel-2: #2f3340;
+    --text: #e7e9ee;
+    --muted: #9aa1ad;
+    --accent: #6cc1ff;
+    --accent-2: #66ff95;
+    --error: #ff7b7b;
+    --border: #3a3f4d;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 32px 16px;
+  }
+  .wrap { width: 100%; max-width: 640px; }
+  h1 { margin: 0 0 4px; font-size: 22px; }
+  .sub { color: var(--muted); margin-bottom: 24px; font-size: 13px; }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    margin-bottom: 18px;
+  }
+  label { display: block; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; }
+  input[type="text"] {
+    width: 100%;
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 9px 10px;
+    font: inherit;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  input[type="text"]:focus { outline: none; border-color: var(--accent); }
+  input.invalid { border-color: var(--error); }
+
+  .row {
+    display: grid;
+    grid-template-columns: 130px 60px 1fr 80px;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .row:last-child { border-bottom: none; }
+  .row .name { font-size: 14px; }
+  .swatch {
+    width: 100%; height: 34px; border-radius: 6px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    padding: 0;
+    background: transparent;
+  }
+  /* native color input styling cleanup */
+  input[type="color"] {
+    -webkit-appearance: none; appearance: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    width: 100%; height: 34px;
+    padding: 0;
+    cursor: pointer;
+    background: transparent;
+  }
+  input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+  input[type="color"]::-webkit-color-swatch { border: none; border-radius: 5px; }
+  input[type="color"]::-moz-color-swatch { border: none; border-radius: 5px; }
+
+  .hex {
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 13px;
+    text-transform: uppercase;
+  }
+  .hex:focus { outline: none; border-color: var(--accent); }
+
+  .alpha {
+    width: 100%;
+  }
+
+  .out-row { display: flex; gap: 10px; align-items: stretch; }
+  .out-row input { flex: 1; }
+  button.action {
+    background: var(--accent);
+    color: #0c1726;
+    border: none;
+    border-radius: 6px;
+    padding: 0 14px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  button.action:hover { background: #8ed0ff; }
+  button.action.ok { background: var(--accent-2); color: #0a2412; }
+
+  .small { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  details { margin-top: 8px; }
+  summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+  .alpha-wrap { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .alpha-wrap input[type="range"] { flex: 1; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Dino Skin Color Picker</h1>
+  <div class="sub">Format: <code>(Name)000(underbelly)FF(body)FF(flank)FF(markings)FF(maledisplay)FF</code></div>
+
+  <div class="card">
+    <label for="dinoName">Dinosaur name</label>
+    <input id="dinoName" type="text" value="Troodon" autocomplete="off" />
+  </div>
+
+  <div class="card" id="rows"></div>
+
+  <div class="card">
+    <label>Generated code</label>
+    <div class="out-row">
+      <input id="output" type="text" readonly />
+      <button id="copyBtn" class="action">Copy</button>
+    </div>
+    <div class="small" id="copyMsg">&nbsp;</div>
+  </div>
+
+  <div class="card">
+    <label for="decodeIn">Decode existing code</label>
+    <div class="out-row">
+      <input id="decodeIn" type="text" placeholder="Troodon000C4A989FF957B5CFF6C604FFF2F2525FF3E87BCFF" autocomplete="off" />
+      <button id="decodeBtn" class="action">Load</button>
+    </div>
+    <div class="small" id="decodeMsg">&nbsp;</div>
+  </div>
+</div>
+
+<script>
+  const SECTIONS = [
+    { key: "underbelly",  label: "Underbelly",   default: "#C4A989" },
+    { key: "body",        label: "Body",         default: "#957B5C" },
+    { key: "flank",       label: "Flank",        default: "#6C604F" },
+    { key: "markings",    label: "Markings",     default: "#2F2525" },
+    { key: "maledisplay", label: "Male display", default: "#3E87BC" },
+  ];
+
+  const rowsEl = document.getElementById("rows");
+  const dinoEl = document.getElementById("dinoName");
+  const outEl  = document.getElementById("output");
+
+  const state = SECTIONS.map(s => ({ ...s, color: s.default, alpha: 255 }));
+
+  function build() {
+    rowsEl.innerHTML = "";
+    state.forEach((s, i) => {
+      const row = document.createElement("div");
+      row.className = "row";
+      row.innerHTML = `
+        <div class="name">${s.label}</div>
+        <input type="color" data-i="${i}" data-role="picker" value="${s.color}" />
+        <input type="text"  data-i="${i}" data-role="hex" class="hex" value="${s.color.toUpperCase()}" maxlength="7" />
+        <div>
+          <input type="text" data-i="${i}" data-role="alpha" class="hex alpha" value="${s.alpha.toString(16).toUpperCase().padStart(2,"0")}" maxlength="2" title="Alpha (00-FF)" />
+        </div>
+      `;
+      rowsEl.appendChild(row);
+    });
+    rowsEl.addEventListener("input", onRowInput);
+  }
+
+  function onRowInput(e) {
+    const t = e.target;
+    const i = +t.dataset.i;
+    const role = t.dataset.role;
+    if (i == null || !role) return;
+
+    if (role === "picker") {
+      state[i].color = t.value.toUpperCase();
+      const hexInput = rowsEl.querySelector(`input[data-role="hex"][data-i="${i}"]`);
+      hexInput.value = state[i].color;
+      hexInput.classList.remove("invalid");
+    } else if (role === "hex") {
+      let v = t.value.trim();
+      if (!v.startsWith("#")) v = "#" + v;
+      const ok = /^#[0-9a-fA-F]{6}$/.test(v);
+      t.classList.toggle("invalid", !ok);
+      if (ok) {
+        state[i].color = v.toUpperCase();
+        rowsEl.querySelector(`input[data-role="picker"][data-i="${i}"]`).value = state[i].color;
+      }
+    } else if (role === "alpha") {
+      const v = t.value.trim();
+      const ok = /^[0-9a-fA-F]{1,2}$/.test(v);
+      t.classList.toggle("invalid", !ok);
+      if (ok) state[i].alpha = parseInt(v, 16);
+    }
+    updateOutput();
+  }
+
+  function updateOutput() {
+    const name = dinoEl.value.trim() || "Troodon";
+    let code = name + "000";
+    for (const s of state) {
+      code += s.color.replace("#", "").toUpperCase();
+      code += s.alpha.toString(16).toUpperCase().padStart(2, "0");
+    }
+    outEl.value = code;
+  }
+
+  dinoEl.addEventListener("input", updateOutput);
+
+  document.getElementById("copyBtn").addEventListener("click", async () => {
+    const btn = document.getElementById("copyBtn");
+    const msg = document.getElementById("copyMsg");
+    try {
+      await navigator.clipboard.writeText(outEl.value);
+      btn.classList.add("ok");
+      btn.textContent = "Copied";
+      msg.textContent = "Copied to clipboard.";
+      setTimeout(() => { btn.classList.remove("ok"); btn.textContent = "Copy"; msg.textContent = " "; }, 1500);
+    } catch {
+      outEl.select();
+      msg.textContent = "Press Ctrl+C to copy.";
+    }
+  });
+
+  document.getElementById("decodeBtn").addEventListener("click", () => {
+    const msg = document.getElementById("decodeMsg");
+    const raw = document.getElementById("decodeIn").value.trim();
+    // Match: name + "000" + 5 x (6 hex color + 2 hex alpha)
+    const m = raw.match(/^([A-Za-z]+)000([0-9A-Fa-f]{40})$/);
+    if (!m) {
+      msg.textContent = "Format not recognized. Expected: Name + 000 + 40 hex characters.";
+      msg.style.color = "var(--error)";
+      return;
+    }
+    const name = m[1];
+    const body = m[2].toUpperCase();
+    dinoEl.value = name;
+    for (let i = 0; i < 5; i++) {
+      const slice = body.substr(i * 8, 8);
+      state[i].color = "#" + slice.substr(0, 6);
+      state[i].alpha = parseInt(slice.substr(6, 2), 16);
+    }
+    build();
+    updateOutput();
+    msg.style.color = "var(--accent-2)";
+    msg.textContent = "Loaded " + name + ".";
+    setTimeout(() => { msg.textContent = " "; msg.style.color = "var(--muted)"; }, 2500);
+  });
+
+  build();
+  updateOutput();
+</script>
+</body>
+</html>
